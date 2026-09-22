@@ -1,0 +1,9 @@
+{
+  // The template's own sources: the copied gate and the tests over it. They are kept out
+  // of `tsconfig.json` for the same reason they are kept out of `pnpm check` — that
+  // command is the verdict the platform agent gives a feature from inside its sandbox,
+  // and nothing about the company inventory should be able to fail it.
+  "extends": "./tsconfig.json",
+  "include": [".claude/skills/**/*.ts", "test-template/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,14 @@
+id: '001'
+project: orders
+projectType: backend-api
+template: template-backend-api@1.0.0
+risk: low
+components:
+  - fastify@5
+  - zod@3
+  - vitest
+deployTarget: compose-local
+acceptance:
+  - POST /orders answers 201 with the created order and its id
+  - A request with no item answers 400
+  - GET /orders/:id answers 200 with the order and 404 when it does not exist

@@ -1,0 +1,35 @@
+# A copy of the `backend-api` block of ai-platform/inventory.yaml, kept here so a
+# developer can get the agent's verdict locally with `pnpm spec:validate`.
+#
+# The agent never reads this file: it loads its own inventory. This copy exists to agree
+# with that one. When the platform inventory changes, copy the change here in the same
+# commit, or a developer will be told a spec passes that the agent then rejects.
+version: 1
+
+projectTypes:
+  backend-api:
+    description: HTTP API on Fastify, deployed as a container
+    components:
+      - name: fastify
+        version: '5'
+      - name: pg
+        version: '8'
+      - name: zod
+        version: '3'
+      - name: vitest
+      - name: biome
+    templates:
+      - template-backend-api@1.0.0
+    deployTargets:
+      - compose-local
+
+# Text rules read the prose of spec.md, plan.md and tasks.md, so a spec is rejected even
+# when the forbidden technology never reaches the components list.
+textRules:
+  - id: mobile-react-native-only
+    forbid:
+      - flutter
+      - xamarin
+      - ionic
+      - cordova
+    reason: mobile work ships with react-native only

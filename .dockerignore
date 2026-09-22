@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.github
+.state
+.env
+specs
+examples
+docs
+test
+*.log

@@ -1,0 +1,71 @@
+# Two jobs. `check` is the same command the agent runs inside its sandbox, so a green
+# sandbox and a red CI mean the two environments drifted. `image` publishes to GHCR with
+# the branch as the tag, which is the only thing the platform needs from CI: the deployer
+# pulls `<image>:develop`, `<image>:qa` and `<image>:main`.
+name: ci
+
+on:
+  push:
+    branches: [main, qa, develop]
+    tags-ignore: ['**']
+  pull_request:
+    branches: [main, qa, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Lint, typecheck and tests in one command, exactly as the agent runs it.
+      - run: pnpm check
+
+      # The template's own tests: the spec gate and the manifest generator. They stay out
+      # of `pnpm check` on purpose, so nothing about the company inventory can fail a
+      # feature inside the agent's sandbox. CI is where they belong.
+      - run: pnpm test:template
+
+  image:
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          # The tag IS the branch name: src/deploy.ts pulls the tag that matches the
+          # environment's branch. Do not add `latest` semantics on top of it.
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

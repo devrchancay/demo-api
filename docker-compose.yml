@@ -1,0 +1,37 @@
+# Local development only. The deployed environments (dev 3001, qa 3002, prod 3003) are
+# containers the platform agent creates from the image CI publishes; they are not here.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: template-backend-api-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    container_name: template-backend-api
+    profiles: ["app"]
+    environment:
+      NODE_ENV: production
+      APP_ENV: local
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

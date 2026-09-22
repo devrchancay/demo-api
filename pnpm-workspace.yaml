@@ -1,0 +1,4 @@
+# pnpm 11 asks before running a package's build script. esbuild backs tsx and has to build;
+# nothing else in this tree needs one.
+allowBuilds:
+  esbuild: true
