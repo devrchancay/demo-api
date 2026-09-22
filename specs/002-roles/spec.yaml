@@ -1,0 +1,16 @@
+id: '002'
+project: roles
+projectType: backend-api
+template: template-backend-api@1.0.0
+risk: low
+components:
+  - fastify@5
+  - zod@3
+  - vitest
+deployTarget: compose-local
+acceptance:
+  - GET /roles answers 200 with the two roles of the catalogue, admin first and user second.
+  - Every role in the answer carries a non-empty name and a non-empty description.
+  - GET /roles answers exactly the same body on two calls in a row, because nothing can change it.
+  - GET /roles/admin answers 200 with the admin role alone.
+  - GET /roles/nope answers 404 for a name that is not in the catalogue.
