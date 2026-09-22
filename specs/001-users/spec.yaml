@@ -1,0 +1,19 @@
+id: '001'
+project: users
+projectType: backend-api
+template: template-backend-api@1.0.0
+risk: low
+components:
+  - fastify@5
+  - zod@3
+  - vitest
+deployTarget: compose-local
+acceptance:
+  - POST /users answers 201 with the created user, carrying an id the caller did not send.
+  - POST /users answers 400 when name is missing or email is not an email.
+  - POST /users answers 409 when email already belongs to another user.
+  - GET /users answers 200 with the list of users, and with an empty list when there are none.
+  - GET /users/:id answers 200 with the user, and 404 when no user has that id.
+  - PATCH /users/:id answers 200 with the updated user, taking name, email or both, and 404 when no user has that id.
+  - DELETE /users/:id answers 204 with no body, and 404 when no user has that id.
+  - A user removed with DELETE is gone from GET /users.
