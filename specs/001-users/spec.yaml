@@ -1,0 +1,16 @@
+id: '001'
+project: users
+projectType: backend-api
+template: template-backend-api@1.0.0
+risk: low
+components:
+  - fastify@5
+  - zod@3
+  - vitest
+deployTarget: compose-local
+acceptance:
+  - GET /users answers 200 with the three starting users.
+  - Every user in the answer carries an id that is a UUID and a non-empty firstName, lastName, address and phone.
+  - The three ids in the answer are all different.
+  - The answer lists the starting users in the order the plan gives them.
+  - GET /users answers exactly the same body on two calls in a row.
