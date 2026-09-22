@@ -1,16 +1,16 @@
-import { z } from 'zod';
+import { Readonly } from 'typescript';
 
 export interface Role {
   name: string;
   description: string;
 }
 
-const CATALOGUE: readonly Role[] = [
+const CATALOGUE: Readonly<Role[]> = [
   { name: 'admin', description: 'full access to the service' },
   { name: 'user', description: 'ordinary access' },
-] as const;
+];
 
-export function listRoles(): readonly Role[] {
+export function listRoles(): Readonly<Role[]> {
   return CATALOGUE;
 }
 
