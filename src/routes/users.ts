@@ -2,96 +2,170 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { createUser, deleteUser, findUser, listUsers, updateUser } from '../services/users.ts'
 
-const createUserSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-})
-
-const updateUserSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    email: z.string().email().optional(),
-  })
-  .refine((data) => data.name !== undefined || data.email !== undefined, {
-    message: 'name or email is required',
-  })
-
-const idParamsSchema = z.object({
-  id: z.string().min(1),
-})
-
 /**
- * CRUD for the user resource. Every route validates with zod before it touches the
- * service, which holds all the logic and knows nothing about Fastify.
+ * The user resource: an in-memory store and all the logic around it. Nothing here knows
+ * about Fastify or HTTP; a route maps the results below to status codes.
  */
 export async function userRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/users', async (request, reply) => {
-    const parsed = createUserSchema.safeParse(request.body)
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.message })
+  // POST /users
+  app.post(
+    '/users',
+    {
+      schema: {
+        body: z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+        }),
+        response: {
+          201: z.object({
+            id: z.string(),
+            name: z.string(),
+            email: z.string().email(),
+            createdAt: z.string(),
+            updatedAt: z.string(),
+          }),
+          400: z.object({
+            error: z.literal('invalid-body'),
+          }),
+          409: z.object({
+            error: z.literal('email-taken'),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = createUser(request.body as { name: string; email: string })
+      if (!result.ok) {
+        if (result.error === 'email-taken') {
+          return reply.status(409).send({ error: 'email-taken' })
+        }
+        return reply.status(400).send({ error: 'invalid-body' })
+      }
+      return reply.status(201).send(result.user)
     }
+  )
 
-    const result = createUser(parsed.data)
-    if (!result.ok) {
-      return reply.status(409).send({ error: 'email already belongs to another user' })
+  // GET /users
+  app.get(
+    '/users',
+    {
+      schema: {
+        response: {
+          200: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              email: z.string().email(),
+              createdAt: z.string(),
+              updatedAt: z.string(),
+            }),
+          ),
+        },
+      },
+    },
+    async (_request, reply) => {
+      return reply.send(listUsers())
     }
+  )
 
-    return reply.status(201).send(result.user)
-  })
-
-  app.get('/users', async () => listUsers())
-
-  app.get('/users/:id', async (request, reply) => {
-    const parsed = idParamsSchema.safeParse(request.params)
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.message })
+  // GET /users/:id
+  app.get(
+    '/users/:id',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        response: {
+          200: z.object({
+            id: z.string(),
+            name: z.string(),
+            email: z.string().email(),
+            createdAt: z.string(),
+            updatedAt: z.string(),
+          }),
+          404: z.object({
+            error: z.literal('not-found'),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = findUser((request.params as { id: string }).id)
+      if (user === undefined) {
+        return reply.status(404).send({ error: 'not-found' })
+      }
+      return reply.send(user)
     }
+  )
 
-    const user = findUser(parsed.data.id)
-    if (user === undefined) {
-      return reply.status(404).send({ error: 'user not found' })
+  // PATCH /users/:id
+  app.patch(
+    '/users/:id',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        body: z
+          .object({
+            name: z.string().min(1).optional(),
+            email: z.string().email().optional(),
+          })
+          .refine((data) => Object.keys(data).length > 0, {
+            message: 'At least one field (name or email) must be provided',
+          }),
+        response: {
+          200: z.object({
+            id: z.string(),
+            name: z.string(),
+            email: z.string().email(),
+            createdAt: z.string(),
+            updatedAt: z.string(),
+          }),
+          400: z.object({
+            error: z.literal('invalid-body'),
+          }),
+          404: z.object({
+            error: z.literal('not-found'),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = updateUser((request.params as { id: string }).id, request.body as { name?: string; email?: string })
+      if (!result.ok) {
+        if (result.error === 'not-found') {
+          return reply.status(404).send({ error: 'not-found' })
+        }
+        return reply.status(400).send({ error: 'invalid-body' })
+      }
+      return reply.send(result.user)
     }
+  )
 
-    return reply.status(200).send(user)
-  })
-
-  app.patch('/users/:id', async (request, reply) => {
-    const params = idParamsSchema.safeParse(request.params)
-    if (!params.success) {
-      return reply.status(400).send({ error: params.error.message })
+  // DELETE /users/:id
+  app.delete(
+    '/users/:id',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        response: {
+          204: z.null(),
+          404: z.object({
+            error: z.literal('not-found'),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = deleteUser((request.params as { id: string }).id)
+      if (!result.ok) {
+        return reply.status(404).send({ error: 'not-found' })
+      }
+      return reply.status(204).send(null)
     }
-
-    const body = updateUserSchema.safeParse(request.body)
-    if (!body.success) {
-      return reply.status(400).send({ error: body.error.message })
-    }
-
-    const patch = {
-      ...(body.data.name !== undefined ? { name: body.data.name } : {}),
-      ...(body.data.email !== undefined ? { email: body.data.email } : {}),
-    }
-    const result = updateUser(params.data.id, patch)
-    if (!result.ok) {
-      const status = result.error === 'not-found' ? 404 : 409
-      const error =
-        result.error === 'not-found' ? 'user not found' : 'email already belongs to another user'
-      return reply.status(status).send({ error })
-    }
-
-    return reply.status(200).send(result.user)
-  })
-
-  app.delete('/users/:id', async (request, reply) => {
-    const parsed = idParamsSchema.safeParse(request.params)
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.message })
-    }
-
-    const result = deleteUser(parsed.data.id)
-    if (!result.ok) {
-      return reply.status(404).send({ error: 'user not found' })
-    }
-
-    return reply.status(204).send()
-  })
+  )
 }
