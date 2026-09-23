@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import type { Config } from './config.ts'
 import { registerDatabase } from './plugins/database.ts'
 import { healthRoutes } from './routes/health.ts'
+import { roleRoutes } from './routes/roles.ts'
 import { userRoutes } from './routes/users.ts'
 
 /**
@@ -20,6 +21,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await registerDatabase(app, config)
   await app.register(async (instance) => healthRoutes(instance, config))
   await app.register(userRoutes)
+  await app.register(roleRoutes)
 
   return app
 }
