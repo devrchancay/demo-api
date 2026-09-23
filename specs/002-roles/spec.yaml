@@ -1,0 +1,16 @@
+id: '002'
+project: roles
+projectType: backend-api
+template: template-backend-api@1.0.0
+risk: low
+components:
+  - fastify@5
+  - zod@3
+  - vitest
+deployTarget: compose-local
+acceptance:
+  - GET /roles answers 200 with the two starting roles.
+  - Every role in the answer carries an id that is a UUID and a non-empty name and description.
+  - The two ids in the answer are all different.
+  - The names in the answer are exactly admin and user, in that order.
+  - GET /roles answers exactly the same body on two calls in a row.
